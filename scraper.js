@@ -51,17 +51,16 @@ const ensureDataDirectoryExists = async () => {
         console.error('Error ensuring data directory exists:', e);
         throw new Error(`Failed to create or access data directory at ${directoryPath}`);
     }
-    return directoryPath;
 }
 
 const checkIfHasNewItem = async (imgUrls, topic) => {
-    const directoryPath = await ensureDataDirectoryExists(); // Await directory creation
-    const filePath = path.join(directoryPath, `${topic}.json`);
+    const filePath = path.join(__dirname, 'data', `${topic}.json`);
     let savedUrls = [];
 
     try {
-        // Read previously saved URLs as raw text and parse as JSON if the file exists
-        if (await fs.access(filePath).then(() => true).catch(() => false)) {
+        // Check if file exists and read content
+        const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+        if (fileExists) {
             const fileContent = await fs.readFile(filePath, 'utf8');
             savedUrls = JSON.parse(fileContent);
         } else {
@@ -126,6 +125,10 @@ const scrape = async (topic, url) => {
 }
 
 const program = async () => {
+    // Ensure 'data' directory exists before starting the program
+    await ensureDataDirectoryExists();
+
+    // Process all projects concurrently, ensuring data directory is created once upfront
     await Promise.all(config.projects.filter(project => {
         if (project.disabled) {
             console.log(`Topic "${project.topic}" is disabled. Skipping.`);
