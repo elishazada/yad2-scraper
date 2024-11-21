@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const Telenode = require('telenode-js');
 const fs = require('fs');
+const path = require('path');
 const config = require('./config.json');
 
 const getYad2Response = async (url) => {
@@ -12,7 +13,7 @@ const getYad2Response = async (url) => {
         const res = await fetch(url, requestOptions);
         return await res.text();
     } catch (err) {
-        console.log(err);
+        console.log('Error fetching Yad2 response:', err);
     }
 }
 
@@ -28,7 +29,7 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
         throw new Error("Bot detection");
     }
     const $feedItems = $(".feeditem").find(".pic");
-    if (!$feedItems) {
+    if (!$feedItems.length) {
         throw new Error("Could not find feed items");
     }
     const imageUrls = [];
@@ -42,33 +43,33 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
 }
 
 const checkIfHasNewItem = async (imgUrls, topic) => {
-    const filePath = `./data/${topic}.json`;
+    const directoryPath = path.resolve(__dirname, 'data');
+    const filePath = path.join(directoryPath, `${topic}.json`);
     let savedUrls = [];
+
     try {
-        // Ensure the `data` directory exists before attempting to read/write files
-        if (!fs.existsSync('data')) {
-            fs.mkdirSync('data');
+        // Ensure the `data` directory exists or create it
+        if (!fs.existsSync(directoryPath)) {
+            fs.mkdirSync(directoryPath);
         }
-        
-        // Try loading previously saved URLs from the file
-        savedUrls = require(filePath);
-    } catch (e) {
-        if (e.code === "MODULE_NOT_FOUND") {
-            // If the file does not exist, create it with an empty array
-            fs.writeFileSync(filePath, '[]');
+
+        // Load previously saved URLs if the file exists
+        if (fs.existsSync(filePath)) {
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            savedUrls = JSON.parse(fileContent);
         } else {
-            console.log(e);
-            throw new Error(`Could not read / create ${filePath}`);
+            // Initialize an empty JSON file if it doesn't exist
+            fs.writeFileSync(filePath, '[]', 'utf8');
         }
+    } catch (e) {
+        console.error('Error reading or creating file:', e);
+        throw new Error(`Could not read / create ${filePath}`);
     }
 
     let shouldUpdateFile = false;
-    savedUrls = savedUrls.filter(savedUrl => {
-        shouldUpdateFile = true;
-        return imgUrls.includes(savedUrl);
-    });
-
     const newItems = [];
+
+    // Check new URLs against the saved ones
     imgUrls.forEach(url => {
         if (!savedUrls.includes(url)) {
             savedUrls.push(url);
@@ -77,22 +78,25 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
         }
     });
 
+    // Update the file if there are new items
     if (shouldUpdateFile) {
         const updatedUrls = JSON.stringify(savedUrls, null, 2);
-        fs.writeFileSync(filePath, updatedUrls);
+        fs.writeFileSync(filePath, updatedUrls, 'utf8');
         await createPushFlagForWorkflow();
     }
+
     return newItems;
 }
 
-const createPushFlagForWorkflow = () => {
-    fs.writeFileSync("push_me", "");
+const createPushFlagForWorkflow = async () => {
+    fs.writeFileSync("push_me", "", 'utf8');
 }
 
 const scrape = async (topic, url) => {
     const apiToken = process.env.API_TOKEN || config.telegramApiToken;
     const chatId = process.env.CHAT_ID || config.chatId;
     const telenode = new Telenode({ apiToken });
+
     try {
         await telenode.sendTextMessage(`Starting scanning ${topic} on link:\n${url}`, chatId);
         const scrapeImgResults = await scrapeItemsAndExtractImgUrls(url);
@@ -118,8 +122,9 @@ const program = async () => {
     await Promise.all(config.projects.filter(project => {
         if (project.disabled) {
             console.log(`Topic "${project.topic}" is disabled. Skipping.`);
+            return false;
         }
-        return !project.disabled;
+        return true;
     }).map(async project => {
         await scrape(project.topic, project.url);
     }));
