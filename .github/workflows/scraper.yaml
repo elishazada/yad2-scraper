@@ -2,7 +2,7 @@ name: Yad2 Scraper
 
 on:
   schedule:
-    - cron: '*/15 5-17 * * *'
+    - cron: '*/15 5-17 * * *'  # This will run every 15 minutes between 5 AM and 5 PM
   workflow_dispatch:
     branches:
       - '**'
@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -20,20 +21,22 @@ jobs:
         run: yarn install
 
       - name: Setup git config
+        env:
+          GIT_EMAIL: ${{ secrets.GIT_CONFIG_EMAIL }}  # To handle the email variable
         run: |
           git config user.name "GitHub Actions"
-          git config user.email "${{ secrets.GIT_CONFIG_EMAIL }}"
+          git config user.email "$GIT_EMAIL"
 
       - name: Run scraper
-        run: |
-          export API_TOKEN=${{ secrets.API_TOKEN }}
-          export CHAT_ID=${{ secrets.CHAT_ID }}
-          yarn scrape
+        env:
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: yarn scrape
 
       - name: Push new json data if needed
         run: |
           if [ -f ./push_me ]; then
-            echo Pushing to Github...
+            echo "Pushing to Github..."
             git add .
             DATE=$(date +"%F, %H:%M:%S")
             git commit -m "updated data - $DATE"
