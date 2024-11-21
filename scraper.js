@@ -42,17 +42,25 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
     return imageUrls;
 }
 
-const checkIfHasNewItem = async (imgUrls, topic) => {
+const ensureDataDirectoryExists = () => {
     const directoryPath = path.resolve(__dirname, 'data');
+    try {
+        // Use fs.mkdirSync with options to avoid exception if the directory exists
+        fs.mkdirSync(directoryPath, { recursive: true });
+    } catch (e) {
+        if (e.code !== 'EEXIST') {
+            throw e; // Only ignore 'EEXIST', throw other errors
+        }
+    }
+    return directoryPath;
+}
+
+const checkIfHasNewItem = async (imgUrls, topic) => {
+    const directoryPath = ensureDataDirectoryExists();
     const filePath = path.join(directoryPath, `${topic}.json`);
     let savedUrls = [];
 
     try {
-        // Ensure the `data` directory exists or create it
-        if (!fs.existsSync(directoryPath)) {
-            fs.mkdirSync(directoryPath);
-        }
-
         // Read previously saved URLs as raw text and parse as JSON if the file exists
         if (fs.existsSync(filePath)) {
             const fileContent = fs.readFileSync(filePath, 'utf8');
