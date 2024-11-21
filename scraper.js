@@ -53,7 +53,7 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
             fs.mkdirSync(directoryPath);
         }
 
-        // Load previously saved URLs if the file exists
+        // Read previously saved URLs as raw text and parse as JSON if the file exists
         if (fs.existsSync(filePath)) {
             const fileContent = fs.readFileSync(filePath, 'utf8');
             savedUrls = JSON.parse(fileContent);
