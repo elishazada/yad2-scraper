@@ -3,8 +3,20 @@
   "chatId": null,
   "projects": [
     {
-      "topic": "",
-      "url": ""
+      "topic": "House in Rishon Lezion",
+      "url": "https://www.yad2.co.il/realestate/forsale?multiNeighborhood=292%2C291%2C298&propertyGroup=houses&property=5%2C39&zoom=14"
+    },
+    {
+      "topic": "House in Rishon Lezion Page 2",
+      "url": "https://www.yad2.co.il/realestate/forsale?multiNeighborhood=292%2C291%2C298&propertyGroup=houses&property=5%2C39&zoom=14&page=2"
+    },
+    {
+      "topic": "House in Rishon Lezion Page 3",
+      "url": "https://www.yad2.co.il/realestate/forsale?multiNeighborhood=292%2C291%2C298&propertyGroup=houses&property=5%2C39&zoom=14&page=3"
+    },
+      {
+      "topic": "House in Rishon Lezion Page 4",
+      "url": "https://www.yad2.co.il/realestate/forsale?multiNeighborhood=292%2C291%2C298&propertyGroup=houses&property=5%2C39&zoom=14&page=4"
     }
   ]
 }
