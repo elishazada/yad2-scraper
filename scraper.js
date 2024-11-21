@@ -1,6 +1,6 @@
 const cheerio = require('cheerio');
 const Telenode = require('telenode-js');
-const fs = require('fs');
+const fs = require('fs').promises; // Use fs.promises for async operations
 const path = require('path');
 const config = require('./config.json');
 
@@ -42,32 +42,31 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
     return imageUrls;
 }
 
-const ensureDataDirectoryExists = () => {
+const ensureDataDirectoryExists = async () => {
     const directoryPath = path.resolve(__dirname, 'data');
     try {
-        // Use fs.mkdirSync with options to avoid exception if the directory exists
-        fs.mkdirSync(directoryPath, { recursive: true });
+        // Create directory if it doesn't exist using promises and recursive option
+        await fs.mkdir(directoryPath, { recursive: true });
     } catch (e) {
-        if (e.code !== 'EEXIST') {
-            throw e; // Only ignore 'EEXIST', throw other errors
-        }
+        console.error('Error ensuring data directory exists:', e);
+        throw new Error(`Failed to create or access data directory at ${directoryPath}`);
     }
     return directoryPath;
 }
 
 const checkIfHasNewItem = async (imgUrls, topic) => {
-    const directoryPath = ensureDataDirectoryExists();
+    const directoryPath = await ensureDataDirectoryExists(); // Await directory creation
     const filePath = path.join(directoryPath, `${topic}.json`);
     let savedUrls = [];
 
     try {
         // Read previously saved URLs as raw text and parse as JSON if the file exists
-        if (fs.existsSync(filePath)) {
-            const fileContent = fs.readFileSync(filePath, 'utf8');
+        if (await fs.access(filePath).then(() => true).catch(() => false)) {
+            const fileContent = await fs.readFile(filePath, 'utf8');
             savedUrls = JSON.parse(fileContent);
         } else {
             // Initialize an empty JSON file if it doesn't exist
-            fs.writeFileSync(filePath, '[]', 'utf8');
+            await fs.writeFile(filePath, '[]', 'utf8');
         }
     } catch (e) {
         console.error('Error reading or creating file:', e);
@@ -89,7 +88,7 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
     // Update the file if there are new items
     if (shouldUpdateFile) {
         const updatedUrls = JSON.stringify(savedUrls, null, 2);
-        fs.writeFileSync(filePath, updatedUrls, 'utf8');
+        await fs.writeFile(filePath, updatedUrls, 'utf8');
         await createPushFlagForWorkflow();
     }
 
@@ -97,7 +96,7 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
 }
 
 const createPushFlagForWorkflow = async () => {
-    fs.writeFileSync("push_me", "", 'utf8');
+    await fs.writeFile("push_me", "", 'utf8');
 }
 
 const scrape = async (topic, url) => {
@@ -122,7 +121,7 @@ const scrape = async (topic, url) => {
             errMsg = `Error: ${errMsg}`;
         }
         await telenode.sendTextMessage(`Scan workflow failed... 😥\n${errMsg}`, chatId);
-        throw new Error(e);
+        throw new Error(`Scan workflow failed: ${errMsg}`);
     }
 }
 
