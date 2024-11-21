@@ -2,7 +2,7 @@
   "name": "yad2-scraper",
   "version": "1.0.0",
   "main": "index.js",
-  "author": "Niv Ezra",
+  "author": "Elisha Zada",
   "license": "MIT",
   "scripts": {
     "scrape": "node scraper.js"
