@@ -9,10 +9,10 @@ const getYad2Response = async (url) => {
         redirect: 'follow'
     };
     try {
-        const res = await fetch(url, requestOptions)
-        return await res.text()
+        const res = await fetch(url, requestOptions);
+        return await res.text();
     } catch (err) {
-        console.log(err)
+        console.log(err);
     }
 }
 
@@ -22,7 +22,7 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
         throw new Error("Could not get Yad2 response");
     }
     const $ = cheerio.load(yad2Html);
-    const title = $("title")
+    const title = $("title");
     const titleText = title.first().text();
     if (titleText === "ShieldSquare Captcha") {
         throw new Error("Bot detection");
@@ -31,13 +31,13 @@ const scrapeItemsAndExtractImgUrls = async (url) => {
     if (!$feedItems) {
         throw new Error("Could not find feed items");
     }
-    const imageUrls = []
+    const imageUrls = [];
     $feedItems.each((_, elm) => {
         const imgSrc = $(elm).find("img").attr('src');
         if (imgSrc) {
-            imageUrls.push(imgSrc)
+            imageUrls.push(imgSrc);
         }
-    })
+    });
     return imageUrls;
 }
 
@@ -45,21 +45,29 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
     const filePath = `./data/${topic}.json`;
     let savedUrls = [];
     try {
+        // Ensure the `data` directory exists before attempting to read/write files
+        if (!fs.existsSync('data')) {
+            fs.mkdirSync('data');
+        }
+        
+        // Try loading previously saved URLs from the file
         savedUrls = require(filePath);
     } catch (e) {
         if (e.code === "MODULE_NOT_FOUND") {
-            fs.mkdirSync('data');
+            // If the file does not exist, create it with an empty array
             fs.writeFileSync(filePath, '[]');
         } else {
             console.log(e);
             throw new Error(`Could not read / create ${filePath}`);
         }
     }
+
     let shouldUpdateFile = false;
     savedUrls = savedUrls.filter(savedUrl => {
         shouldUpdateFile = true;
         return imgUrls.includes(savedUrl);
     });
+
     const newItems = [];
     imgUrls.forEach(url => {
         if (!savedUrls.includes(url)) {
@@ -68,6 +76,7 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
             shouldUpdateFile = true;
         }
     });
+
     if (shouldUpdateFile) {
         const updatedUrls = JSON.stringify(savedUrls, null, 2);
         fs.writeFileSync(filePath, updatedUrls);
@@ -77,20 +86,20 @@ const checkIfHasNewItem = async (imgUrls, topic) => {
 }
 
 const createPushFlagForWorkflow = () => {
-    fs.writeFileSync("push_me", "")
+    fs.writeFileSync("push_me", "");
 }
 
 const scrape = async (topic, url) => {
     const apiToken = process.env.API_TOKEN || config.telegramApiToken;
     const chatId = process.env.CHAT_ID || config.chatId;
-    const telenode = new Telenode({apiToken})
+    const telenode = new Telenode({ apiToken });
     try {
-        await telenode.sendTextMessage(`Starting scanning ${topic} on link:\n${url}`, chatId)
+        await telenode.sendTextMessage(`Starting scanning ${topic} on link:\n${url}`, chatId);
         const scrapeImgResults = await scrapeItemsAndExtractImgUrls(url);
         const newItems = await checkIfHasNewItem(scrapeImgResults, topic);
         if (newItems.length > 0) {
             const newItemsJoined = newItems.join("\n----------\n");
-            const msg = `${newItems.length} new items:\n${newItemsJoined}`
+            const msg = `${newItems.length} new items:\n${newItemsJoined}`;
             await telenode.sendTextMessage(msg, chatId);
         } else {
             await telenode.sendTextMessage("No new items were added", chatId);
@@ -98,10 +107,10 @@ const scrape = async (topic, url) => {
     } catch (e) {
         let errMsg = e?.message || "";
         if (errMsg) {
-            errMsg = `Error: ${errMsg}`
+            errMsg = `Error: ${errMsg}`;
         }
-        await telenode.sendTextMessage(`Scan workflow failed... 😥\n${errMsg}`, chatId)
-        throw new Error(e)
+        await telenode.sendTextMessage(`Scan workflow failed... 😥\n${errMsg}`, chatId);
+        throw new Error(e);
     }
 }
 
@@ -112,8 +121,8 @@ const program = async () => {
         }
         return !project.disabled;
     }).map(async project => {
-        await scrape(project.topic, project.url)
-    }))
+        await scrape(project.topic, project.url);
+    }));
 };
 
 program();
